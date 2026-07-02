@@ -1,6 +1,7 @@
 package com.palacius.palacius
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -356,6 +357,7 @@ fun PantallaPOS(
             )
         }
     }
+
     /**
      * Aumenta una unidad a una línea específica.
      */
@@ -824,100 +826,100 @@ fun PantallaPOS(
                 }
             }
 
-articuloPendienteEliminar?.let { articulo ->
+    articuloPendienteEliminar?.let { articulo ->
 
-    AlertDialog(
-        onDismissRequest = {
-            lineaPendienteEliminarId = null
-        },
-        containerColor =
-            PalaciusSurfaceDark,
+        AlertDialog(
+            onDismissRequest = {
+                lineaPendienteEliminarId = null
+            },
+            containerColor =
+                PalaciusSurfaceDark,
 
-        title = {
-            Text(
-                text = "Eliminar producto",
-                color =
-                    PalaciusPrimaryMustard,
-                fontWeight =
-                    FontWeight.Bold
-            )
-        },
-
-        text = {
-            Column {
+            title = {
                 Text(
-                    text =
-                        "¿Deseas eliminar este producto de la cuenta?",
+                    text = "Eliminar producto",
                     color =
-                        PalaciusTextLight
-                )
-
-                Spacer(
-                    modifier =
-                        Modifier.height(12.dp)
-                )
-
-                Text(
-                    text =
-                        "${articulo.cantidad}x ${articulo.descripcion}",
-                    color =
-                        PalaciusSecondaryGold,
+                        PalaciusPrimaryMustard,
                     fontWeight =
                         FontWeight.Bold
                 )
+            },
 
-                Spacer(
-                    modifier =
-                        Modifier.height(4.dp)
-                )
-
-                Text(
-                    text =
-                        formatoMoneda.format(
-                            articulo.subtotal
-                        ),
-                    color =
-                        PalaciusTextLight
-                )
-            }
-        },
-
-        confirmButton = {
-            Button(
-                onClick = {
-                    confirmarEliminarLinea()
-                },
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor =
-                            Color(0xFF8B0000)
+            text = {
+                Column {
+                    Text(
+                        text =
+                            "¿Deseas eliminar este producto de la cuenta?",
+                        color =
+                            PalaciusTextLight
                     )
-            ) {
-                Text(
-                    text = "Sí, eliminar",
-                    color = Color.White,
-                    fontWeight =
-                        FontWeight.Bold
-                )
-            }
-        },
 
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    lineaPendienteEliminarId =
-                        null
+                    Spacer(
+                        modifier =
+                            Modifier.height(12.dp)
+                    )
+
+                    Text(
+                        text =
+                            "${articulo.cantidad}x ${articulo.descripcion}",
+                        color =
+                            PalaciusSecondaryGold,
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(4.dp)
+                    )
+
+                    Text(
+                        text =
+                            formatoMoneda.format(
+                                articulo.subtotal
+                            ),
+                        color =
+                            PalaciusTextLight
+                    )
                 }
-            ) {
-                Text(
-                    text = "Cancelar",
-                    color =
-                        PalaciusTextLight
-                )
+            },
+
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmarEliminarLinea()
+                    },
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                Color(0xFF8B0000)
+                        )
+                ) {
+                    Text(
+                        text = "Sí, eliminar",
+                        color = Color.White,
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+                }
+            },
+
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        lineaPendienteEliminarId =
+                            null
+                    }
+                ) {
+                    Text(
+                        text = "Cancelar",
+                        color =
+                            PalaciusTextLight
+                    )
+                }
             }
-        }
-    )
-}
+        )
+    }
     productoAConfigurar?.let { producto ->
 
         val variantes =
@@ -1573,24 +1575,24 @@ articuloPendienteEliminar?.let { articulo ->
     /*
      * COBRO DIRECTO
      */
+    /*
+ * COBRO DIRECTO
+ */
     if (mostrarDialogoCobroPOS) {
+
         AlertDialog(
             onDismissRequest = {
                 if (!procesandoVenta) {
-                    mostrarDialogoCobroPOS =
-                        false
+                    mostrarDialogoCobroPOS = false
                 }
             },
-            containerColor =
-                PalaciusSurfaceDark,
+            containerColor = PalaciusSurfaceDark,
 
             title = {
                 Text(
                     text = "Cobrar Exacto",
-                    color =
-                        PalaciusPrimaryMustard,
-                    fontWeight =
-                        FontWeight.Bold
+                    color = PalaciusPrimaryMustard,
+                    fontWeight = FontWeight.Bold
                 )
             },
 
@@ -1603,15 +1605,13 @@ articuloPendienteEliminar?.let { articulo ->
                                 ),
                     color = PalaciusTextLight,
                     fontSize = 24.sp,
-                    fontWeight =
-                        FontWeight.Bold
+                    fontWeight = FontWeight.Bold
                 )
             },
 
             confirmButton = {
                 Row(
-                    modifier =
-                        Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement =
                         Arrangement.spacedBy(8.dp)
                 ) {
@@ -1622,20 +1622,16 @@ articuloPendienteEliminar?.let { articulo ->
                     ).forEach { metodo ->
 
                         Button(
-                            modifier =
-                                Modifier.weight(1f),
-                            enabled =
-                                !procesandoVenta,
+                            modifier = Modifier.weight(1f),
+                            enabled = !procesandoVenta,
                             colors =
-                                ButtonDefaults
-                                    .buttonColors(
-                                        containerColor =
-                                            PalaciusBackgroundDark
-                                    ),
+                                ButtonDefaults.buttonColors(
+                                    containerColor =
+                                        PalaciusBackgroundDark
+                                ),
                             onClick = {
-                                if (
-                                    ticketActual.isEmpty()
-                                ) {
+
+                                if (ticketActual.isEmpty()) {
                                     return@Button
                                 }
 
@@ -1648,22 +1644,29 @@ articuloPendienteEliminar?.let { articulo ->
                                     OrdenEntity(
                                         identificador =
                                             "Venta Directa",
-                                        estado = "Cobrado",
+
+                                        estado =
+                                            "Cobrado",
+
                                         metodoPago =
                                             metodo,
+
                                         total =
                                             articulos.sumOf {
                                                 it.subtotal
                                             },
+
                                         resumenProductos =
                                             construirResumenLegacy(
                                                 articulos
                                             ),
+
                                         totalRaul =
                                             totalParaPropietario(
                                                 articulos,
                                                 "Raúl"
                                             ),
+
                                         totalCristian =
                                             totalParaPropietario(
                                                 articulos,
@@ -1672,18 +1675,60 @@ articuloPendienteEliminar?.let { articulo ->
                                     )
 
                                 scope.launch {
-                                    try {
-                                        val ordenGuardada =
+
+                                    /*
+                                     * PASO 1:
+                                     * guardar la venta.
+                                     */
+                                    val ordenGuardada =
+                                        try {
                                             ordenRepository
                                                 .guardarOrdenCompleta(
-                                                    orden = ordenNueva,
-                                                    articulos = articulos
+                                                    orden =
+                                                        ordenNueva,
+                                                    articulos =
+                                                        articulos
                                                 )
 
-                                        ticketActual.clear()
-                                        mostrarDialogoCobroPOS =
-                                            false
+                                        } catch (
+                                            exception: Exception
+                                        ) {
+                                            Log.e(
+                                                "PALACIUS_VENTA",
+                                                "No se pudo registrar la venta directa.",
+                                                exception
+                                            )
 
+                                            Toast.makeText(
+                                                context,
+                                                "No se pudo registrar la venta: " +
+                                                        (
+                                                                exception.message
+                                                                    ?: "error desconocido"
+                                                                ),
+                                                Toast.LENGTH_LONG
+                                            ).show()
+
+                                            /*
+                                             * El carrito no se borra.
+                                             */
+                                            procesandoVenta = false
+
+                                            return@launch
+                                        }
+
+                                    /*
+                                     * La venta ya quedó guardada.
+                                     */
+                                    ticketActual.clear()
+                                    mostrarDialogoCobroPOS =
+                                        false
+
+                                    /*
+                                     * PASO 2:
+                                     * imprimir el ticket.
+                                     */
+                                    try {
                                         val resultado =
                                             withContext(
                                                 Dispatchers.IO
@@ -1694,9 +1739,8 @@ articuloPendienteEliminar?.let { articulo ->
                                                     )
                                             }
 
-                                        when (
-                                            resultado
-                                        ) {
+                                        when (resultado) {
+
                                             is ResultadoImpresion.Exito -> {
                                                 Toast.makeText(
                                                     context,
@@ -1706,9 +1750,14 @@ articuloPendienteEliminar?.let { articulo ->
                                             }
 
                                             is ResultadoImpresion.Error -> {
+                                                Log.e(
+                                                    "PALACIUS_IMPRESION",
+                                                    "Venta ${ordenGuardada.id} registrada, pero no impresa: ${resultado.mensaje}"
+                                                )
+
                                                 Toast.makeText(
                                                     context,
-                                                    "Venta guardada, pero no se imprimió: ${resultado.mensaje}",
+                                                    "Venta registrada, pero no se imprimió: ${resultado.mensaje}",
                                                     Toast.LENGTH_LONG
                                                 ).show()
                                             }
@@ -1717,23 +1766,31 @@ articuloPendienteEliminar?.let { articulo ->
                                     } catch (
                                         exception: Exception
                                     ) {
+                                        Log.e(
+                                            "PALACIUS_IMPRESION",
+                                            "La venta ${ordenGuardada.id} se guardó, pero ocurrió una excepción al imprimir.",
+                                            exception
+                                        )
+
                                         Toast.makeText(
                                             context,
-                                            "No se pudo guardar la venta: ${exception.message}",
+                                            "Venta registrada, pero ocurrió un error al imprimir: " +
+                                                    (
+                                                            exception.message
+                                                                ?: "error desconocido"
+                                                            ),
                                             Toast.LENGTH_LONG
                                         ).show()
 
                                     } finally {
-                                        procesandoVenta =
-                                            false
+                                        procesandoVenta = false
                                     }
                                 }
                             }
                         ) {
                             Text(
                                 text = metodo,
-                                color =
-                                    PalaciusTextLight,
+                                color = PalaciusTextLight,
                                 fontSize = 12.sp
                             )
                         }
@@ -1743,24 +1800,19 @@ articuloPendienteEliminar?.let { articulo ->
 
             dismissButton = {
                 TextButton(
-                    enabled =
-                        !procesandoVenta,
+                    enabled = !procesandoVenta,
                     onClick = {
-                        mostrarDialogoCobroPOS =
-                            false
+                        mostrarDialogoCobroPOS = false
                     }
                 ) {
                     Text(
                         text =
-                            if (
-                                procesandoVenta
-                            ) {
+                            if (procesandoVenta) {
                                 "Procesando..."
                             } else {
                                 "Atrás"
                             },
-                        color =
-                            PalaciusTextLight
+                        color = PalaciusTextLight
                     )
                 }
             }
