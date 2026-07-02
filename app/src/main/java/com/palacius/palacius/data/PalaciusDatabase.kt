@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         OrdenArticuloEntity::class,
         OrdenArticuloExtraEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class PalaciusDatabase : RoomDatabase() {
@@ -53,7 +53,9 @@ abstract class PalaciusDatabase : RoomDatabase() {
                              */
                             .addMigrations(
                                 MIGRATION_8_9,
-                                MIGRATION_9_10
+                                MIGRATION_9_10,
+                                MIGRATION_10_11
+                            
                             )
 
                             /*

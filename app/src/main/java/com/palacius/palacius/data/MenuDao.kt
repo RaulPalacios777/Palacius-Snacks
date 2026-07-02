@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
+
 @Dao
 interface MenuDao {
 
@@ -44,7 +45,14 @@ interface MenuDao {
     suspend fun guardarProducto(
         producto: ProductoMenuEntity
     )
-
+    /*
+     * Actualiza nombre, precio, propietario,
+     * categorías permitidas y estado del topping.
+     */
+    @Update
+    suspend fun actualizarTopping(
+        topping: ToppingEntity
+    ): Int
     @Query(
         """
         SELECT *

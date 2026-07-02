@@ -115,3 +115,27 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         )
     }
 }
+
+/*
+ * Migración de versión 10 a 11.
+ *
+ * Agrega las categorías permitidas para toppings.
+ *
+ * Todos los toppings actuales quedan como "Todos"
+ * para conservar el comportamiento existente hasta
+ * que se configuren desde Administración.
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+
+    override fun migrate(
+        database: SupportSQLiteDatabase
+    ) {
+        database.execSQL(
+            """
+            ALTER TABLE tabla_extras_v3
+            ADD COLUMN categorias_permitidas_raw
+            TEXT NOT NULL DEFAULT 'Todos'
+            """.trimIndent()
+        )
+    }
+}

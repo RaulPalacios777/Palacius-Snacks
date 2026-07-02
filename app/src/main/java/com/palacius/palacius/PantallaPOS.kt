@@ -929,8 +929,19 @@ fun PantallaPOS(
             varianteSeleccionada?.second
                 ?: producto.precioBase
 
+        /*
+ * Solo se muestran los toppings compatibles
+ * con la categoría del producto.
+ */
+        val toppingsDisponibles =
+            toppingsGlobales.filter { topping ->
+                topping.aplicaA(
+                    producto.categoria
+                )
+            }
+
         val extrasSeleccionados =
-            toppingsGlobales.filter {
+            toppingsDisponibles.filter {
                 it.id in extrasSeleccionadosIds
             }
 
@@ -1061,7 +1072,7 @@ fun PantallaPOS(
                     }
 
                     if (
-                        toppingsGlobales.isNotEmpty()
+                        toppingsDisponibles.isNotEmpty()
                     ) {
                         Text(
                             text =
@@ -1102,7 +1113,7 @@ fun PantallaPOS(
                         ) {
                             gridItems(
                                 items =
-                                    toppingsGlobales,
+                                    toppingsDisponibles,
                                 key = { extra ->
                                     extra.id
                                 }

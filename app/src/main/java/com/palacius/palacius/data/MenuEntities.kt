@@ -92,9 +92,66 @@ data class ToppingEntity(
     val propietario: String,
 
     /*
-     * Los extras desactivados se conservan para mantener
-     * referencias históricas y futuras estadísticas.
+     * Categorías de productos en las que puede
+     * utilizarse este topping.
+     *
+     * Ejemplos:
+     *
+     * "Hamburguesas"
+     * "Hamburguesas,Snacks"
+     * "Micheladas"
+     * "Todos"
+     *
+     * Durante la migración, todos los toppings
+     * existentes quedarán temporalmente como "Todos"
+     * para no ocultarlos accidentalmente.
      */
+    @ColumnInfo(name = "categorias_permitidas_raw")
+    val categoriasPermitidasRaw: String = "Todos",
+
     @ColumnInfo(name = "activo_extra")
     val activo: Boolean = true
-)
+) {
+
+    fun obtenerCategoriasPermitidas(): Set<String> {
+        return categoriasPermitidasRaw
+            .split(",")
+            .map { categoria ->
+                categoria.trim()
+            }
+            .filter { categoria ->
+                categoria.isNotBlank()
+            }
+            .toSet()
+    }
+
+    fun aplicaA(
+        categoriaProducto: String
+    ): Boolean {
+        val categorias =
+            obtenerCategoriasPermitidas()
+
+        /*
+         * Una lista vacía o "Todos" mantiene
+         * compatibilidad con toppings anteriores.
+         */
+        if (
+            categorias.isEmpty() ||
+            categorias.any {
+                it.equals(
+                    "Todos",
+                    ignoreCase = true
+                )
+            }
+        ) {
+            return true
+        }
+
+        return categorias.any { categoria ->
+            categoria.equals(
+                categoriaProducto.trim(),
+                ignoreCase = true
+            )
+        }
+    }
+}

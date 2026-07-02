@@ -61,7 +61,22 @@ private val opcionesPropietario = listOf(
         etiqueta = "Caja Compartida"
     )
 )
-
+/*
+ * Categorías en las que puede aparecer un extra.
+ *
+ * Los nombres deben coincidir exactamente con las
+ * categorías utilizadas por ProductoMenuEntity.
+ */
+private val categoriasParaExtras = listOf(
+    "Hamburguesas",
+    "Alitas",
+    "Snacks",
+    "Frappés",
+    "Micheladas",
+    "Bebidas",
+    "Postres",
+    "Extras"
+)
 private fun obtenerOpcionPropietario(
     valorGuardado: String
 ): OpcionPropietario {
@@ -245,16 +260,12 @@ fun VistaAjustes() {
 }
 // --- NUEVA VISTA PARA GESTIONAR EXTRAS (Queso, Papas, Carne) ---
 @Composable
-
 fun VistaGestionToppings(
     menuDao: MenuDao
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-
-    /*
-     * Esta consulta incluye activos e inactivos.
-     */
     val toppingsTodos by
     menuDao
         .obtenerToppingsAdministracion()
@@ -289,6 +300,14 @@ fun VistaGestionToppings(
             !it.activo
         }
 
+    var toppingEditando by remember {
+        mutableStateOf<ToppingEntity?>(null)
+    }
+
+    var toppingPendienteDesactivar by remember {
+        mutableStateOf<ToppingEntity?>(null)
+    }
+
     var nombreExtra by remember {
         mutableStateOf("")
     }
@@ -307,14 +326,203 @@ fun VistaGestionToppings(
         mutableStateOf(false)
     }
 
+    /*
+     * Categorías elegidas en el formulario.
+     */
+    var categoriasSeleccionadas by remember {
+        mutableStateOf<Set<String>>(
+            emptySet()
+        )
+    }
+
     var mensajeFormulario by remember {
         mutableStateOf("")
     }
 
+    var guardandoTopping by remember {
+        mutableStateOf(false)
+    }
 
+    fun limpiarFormularioTopping() {
+        toppingEditando = null
+        nombreExtra = ""
+        precioExtra = ""
+        propietarioSeleccionado =
+            opcionesPropietario.first()
+        categoriasSeleccionadas =
+            emptySet()
+        mensajeFormulario = ""
+    }
 
-    var toppingPendienteDesactivar by remember {
-        mutableStateOf<ToppingEntity?>(null)
+    fun cargarToppingParaEditar(
+        topping: ToppingEntity
+    ) {
+        toppingEditando = topping
+        nombreExtra = topping.nombre
+        precioExtra =
+            topping.precio.toString()
+
+        propietarioSeleccionado =
+            obtenerOpcionPropietario(
+                topping.propietario
+            )
+
+        val categoriasGuardadas =
+            topping.obtenerCategoriasPermitidas()
+
+        /*
+         * Los toppings migrados tienen "Todos".
+         * Al editarlos, se marcan todas las categorías.
+         */
+        categoriasSeleccionadas =
+            if (
+                categoriasGuardadas.any {
+                    it.equals(
+                        "Todos",
+                        ignoreCase = true
+                    )
+                }
+            ) {
+                categoriasParaExtras.toSet()
+            } else {
+                categoriasParaExtras
+                    .filter { categoria ->
+                        categoriasGuardadas.any {
+                                categoriaGuardada ->
+                            categoriaGuardada.equals(
+                                categoria,
+                                ignoreCase = true
+                            )
+                        }
+                    }
+                    .toSet()
+            }
+
+        mensajeFormulario = ""
+    }
+
+    fun guardarOActualizarTopping() {
+        val nombreLimpio =
+            nombreExtra.trim()
+
+        val precio =
+            precioExtra
+                .replace(",", ".")
+                .toDoubleOrNull()
+
+        when {
+            nombreLimpio.isBlank() -> {
+                mensajeFormulario =
+                    "Ingresa el nombre del extra."
+            }
+
+            precio == null ||
+                    precio <= 0.0 -> {
+                mensajeFormulario =
+                    "Ingresa un precio mayor que cero."
+            }
+
+            categoriasSeleccionadas.isEmpty() -> {
+                mensajeFormulario =
+                    "Selecciona al menos una categoría."
+            }
+
+            else -> {
+                val categoriasRaw =
+                    categoriasParaExtras
+                        .filter {
+                            it in categoriasSeleccionadas
+                        }
+                        .joinToString(",")
+
+                val toppingAnterior =
+                    toppingEditando
+
+                val toppingAGuardar =
+                    ToppingEntity(
+                        id =
+                            toppingAnterior?.id
+                                ?: 0,
+
+                        nombre =
+                            nombreLimpio,
+
+                        precio =
+                            precio,
+
+                        propietario =
+                            propietarioSeleccionado.valor,
+
+                        categoriasPermitidasRaw =
+                            categoriasRaw,
+
+                        /*
+                         * Editar un topping inactivo
+                         * no debe reactivarlo.
+                         */
+                        activo =
+                            toppingAnterior?.activo
+                                ?: true
+                    )
+
+                guardandoTopping = true
+                mensajeFormulario = ""
+
+                scope.launch {
+                    try {
+                        if (toppingAnterior == null) {
+                            menuDao.guardarTopping(
+                                toppingAGuardar
+                            )
+
+                            Toast.makeText(
+                                context,
+                                "Extra guardado correctamente.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                        } else {
+                            val filasActualizadas =
+                                menuDao.actualizarTopping(
+                                    toppingAGuardar
+                                )
+
+                            if (
+                                filasActualizadas != 1
+                            ) {
+                                error(
+                                    "No se encontró el extra que intentabas actualizar."
+                                )
+                            }
+
+                            Toast.makeText(
+                                context,
+                                "Extra actualizado correctamente.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+
+                        limpiarFormularioTopping()
+
+                    } catch (
+                        exception: Exception
+                    ) {
+                        mensajeFormulario =
+                            exception.message
+                                ?: "No se pudo guardar el extra."
+
+                        Toast.makeText(
+                            context,
+                            "Error: $mensajeFormulario",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                    } finally {
+                        guardandoTopping = false
+                    }
+                }
+            }
+        }
     }
 
     LazyColumn(
@@ -322,20 +530,30 @@ fun VistaGestionToppings(
     ) {
         item {
             Text(
-                text = "Alta de Extras / Toppings",
-                color = PalaciusSecondaryGold,
+                text =
+                    if (toppingEditando == null) {
+                        "Alta de extras / toppings"
+                    } else {
+                        "Editando extra"
+                    },
+                color =
+                    PalaciusSecondaryGold,
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight =
+                    FontWeight.Bold
             )
 
             Text(
-                text = "Ejemplo: Extra queso, carne adicional o papas.",
-                color = PalaciusTextMuted,
-                fontSize = 14.sp
+                text =
+                    "Configura en qué categorías puede utilizarse cada extra.",
+                color =
+                    PalaciusTextMuted,
+                fontSize = 13.sp
             )
 
             Spacer(
-                modifier = Modifier.height(12.dp)
+                modifier =
+                    Modifier.height(12.dp)
             )
 
             Column(
@@ -362,18 +580,21 @@ fun VistaGestionToppings(
                         label = {
                             Text(
                                 text = "Nombre del extra",
-                                color = PalaciusTextMuted
+                                color =
+                                    PalaciusTextMuted
                             )
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier =
+                            Modifier.weight(1f),
                         singleLine = true,
                         colors =
-                            OutlinedTextFieldDefaults.colors(
-                                focusedTextColor =
-                                    PalaciusTextLight,
-                                unfocusedTextColor =
-                                    PalaciusTextLight
-                            )
+                            OutlinedTextFieldDefaults
+                                .colors(
+                                    focusedTextColor =
+                                        PalaciusTextLight,
+                                    unfocusedTextColor =
+                                        PalaciusTextLight
+                                )
                     )
 
                     OutlinedTextField(
@@ -385,7 +606,8 @@ fun VistaGestionToppings(
                         label = {
                             Text(
                                 text = "Precio",
-                                color = PalaciusTextMuted
+                                color =
+                                    PalaciusTextMuted
                             )
                         },
                         keyboardOptions =
@@ -397,39 +619,46 @@ fun VistaGestionToppings(
                             Modifier.weight(0.6f),
                         singleLine = true,
                         colors =
-                            OutlinedTextFieldDefaults.colors(
-                                focusedTextColor =
-                                    PalaciusTextLight,
-                                unfocusedTextColor =
-                                    PalaciusTextLight
-                            )
+                            OutlinedTextFieldDefaults
+                                .colors(
+                                    focusedTextColor =
+                                        PalaciusTextLight,
+                                    unfocusedTextColor =
+                                        PalaciusTextLight
+                                )
                     )
                 }
 
                 Spacer(
-                    modifier = Modifier.height(16.dp)
+                    modifier =
+                        Modifier.height(16.dp)
                 )
 
                 Box(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier =
+                        Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
                         value =
-                            propietarioSeleccionado.etiqueta,
+                            propietarioSeleccionado
+                                .etiqueta,
                         onValueChange = {},
                         readOnly = true,
                         label = {
                             Text(
-                                text = "Ganancia del extra para",
-                                color = PalaciusTextMuted
+                                text =
+                                    "Ganancia del extra para",
+                                color =
+                                    PalaciusTextMuted
                             )
                         },
                         trailingIcon = {
                             Icon(
                                 imageVector =
-                                    Icons.Default.ArrowDropDown,
+                                    Icons.Default
+                                        .ArrowDropDown,
                                 contentDescription =
-                                    "Desplegar propietarios",
+                                    "Seleccionar propietario",
                                 tint =
                                     PalaciusPrimaryMustard
                             )
@@ -437,12 +666,13 @@ fun VistaGestionToppings(
                         modifier =
                             Modifier.fillMaxWidth(),
                         colors =
-                            OutlinedTextFieldDefaults.colors(
-                                focusedTextColor =
-                                    PalaciusTextLight,
-                                unfocusedTextColor =
-                                    PalaciusTextLight
-                            )
+                            OutlinedTextFieldDefaults
+                                .colors(
+                                    focusedTextColor =
+                                        PalaciusTextLight,
+                                    unfocusedTextColor =
+                                        PalaciusTextLight
+                                )
                     )
 
                     Box(
@@ -452,7 +682,8 @@ fun VistaGestionToppings(
                                 Color.Transparent
                             )
                             .clickable {
-                                expandirPropietario = true
+                                expandirPropietario =
+                                    true
                             }
                     )
 
@@ -460,11 +691,13 @@ fun VistaGestionToppings(
                         expanded =
                             expandirPropietario,
                         onDismissRequest = {
-                            expandirPropietario = false
+                            expandirPropietario =
+                                false
                         },
-                        modifier = Modifier.background(
-                            PalaciusSurfaceDark
-                        )
+                        modifier =
+                            Modifier.background(
+                                PalaciusSurfaceDark
+                            )
                     ) {
                         opcionesPropietario.forEach {
                                 opcion ->
@@ -490,104 +723,292 @@ fun VistaGestionToppings(
                     }
                 }
 
-                if (mensajeFormulario.isNotBlank()) {
+                Spacer(
+                    modifier =
+                        Modifier.height(18.dp)
+                )
+
+                Text(
+                    text =
+                        "Categorías permitidas",
+                    color =
+                        PalaciusSecondaryGold,
+                    fontSize = 14.sp,
+                    fontWeight =
+                        FontWeight.Bold
+                )
+
+                Text(
+                    text =
+                        "El extra solo aparecerá en las categorías seleccionadas.",
+                    color =
+                        PalaciusTextMuted,
+                    fontSize = 11.sp
+                )
+
+                Spacer(
+                    modifier =
+                        Modifier.height(8.dp)
+                )
+
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            categoriasSeleccionadas =
+                                categoriasParaExtras
+                                    .toSet()
+                        },
+                        modifier =
+                            Modifier.weight(1f),
+                        colors =
+                            ButtonDefaults
+                                .buttonColors(
+                                    containerColor =
+                                        PalaciusBackgroundDark
+                                )
+                    ) {
+                        Text(
+                            text = "Seleccionar todas",
+                            color =
+                                PalaciusTextLight,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            categoriasSeleccionadas =
+                                emptySet()
+                        },
+                        modifier =
+                            Modifier.weight(1f),
+                        colors =
+                            ButtonDefaults
+                                .buttonColors(
+                                    containerColor =
+                                        PalaciusDivider
+                                )
+                    ) {
+                        Text(
+                            text = "Limpiar",
+                            color =
+                                PalaciusTextLight,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.height(8.dp)
+                )
+
+                categoriasParaExtras
+                    .chunked(2)
+                    .forEach { filaCategorias ->
+
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(8.dp)
+                        ) {
+                            filaCategorias.forEach {
+                                    categoria ->
+
+                                val seleccionada =
+                                    categoria in
+                                            categoriasSeleccionadas
+
+                                Button(
+                                    onClick = {
+                                        categoriasSeleccionadas =
+                                            if (seleccionada) {
+                                                categoriasSeleccionadas -
+                                                        categoria
+                                            } else {
+                                                categoriasSeleccionadas +
+                                                        categoria
+                                            }
+
+                                        mensajeFormulario = ""
+                                    },
+                                    modifier =
+                                        Modifier.weight(1f),
+                                    colors =
+                                        ButtonDefaults
+                                            .buttonColors(
+                                                containerColor =
+                                                    if (
+                                                        seleccionada
+                                                    ) {
+                                                        PalaciusPrimaryMustard
+                                                    } else {
+                                                        PalaciusBackgroundDark
+                                                    }
+                                            )
+                                ) {
+                                    Text(
+                                        text = categoria,
+                                        color =
+                                            if (
+                                                seleccionada
+                                            ) {
+                                                PalaciusBackgroundDark
+                                            } else {
+                                                PalaciusTextLight
+                                            },
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+
+                            /*
+                             * Mantiene el ancho cuando una fila
+                             * tiene una sola categoría.
+                             */
+                            if (
+                                filaCategorias.size == 1
+                            ) {
+                                Spacer(
+                                    modifier =
+                                        Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        Spacer(
+                            modifier =
+                                Modifier.height(6.dp)
+                        )
+                    }
+
+                if (
+                    mensajeFormulario.isNotBlank()
+                ) {
                     Spacer(
                         modifier =
                             Modifier.height(8.dp)
                     )
 
                     Text(
-                        text = mensajeFormulario,
-                        color = Color(0xFFE57373),
+                        text =
+                            mensajeFormulario,
+                        color =
+                            Color(0xFFE57373),
                         fontSize = 13.sp
                     )
                 }
 
                 Spacer(
-                    modifier = Modifier.height(16.dp)
+                    modifier =
+                        Modifier.height(16.dp)
                 )
 
-                Button(
-                    onClick = {
-                        val nombreLimpio =
-                            nombreExtra.trim()
-
-                        val precio =
-                            precioExtra
-                                .replace(",", ".")
-                                .toDoubleOrNull()
-
-                        when {
-                            nombreLimpio.isBlank() -> {
-                                mensajeFormulario =
-                                    "Ingresa el nombre del extra."
-                            }
-
-                            precio == null ||
-                                    precio <= 0.0 -> {
-                                mensajeFormulario =
-                                    "Ingresa un precio mayor que cero."
-                            }
-
-                            else -> {
-                                scope.launch {
-                                    menuDao.guardarTopping(
-                                        ToppingEntity(
-                                            nombre =
-                                                nombreLimpio,
-                                            precio = precio,
-                                            propietario =
-                                                propietarioSeleccionado
-                                                    .valor,
-                                            activo = true
-                                        )
-                                    )
-                                }
-
-                                nombreExtra = ""
-                                precioExtra = ""
-                                mensajeFormulario = ""
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor =
-                                PalaciusPrimaryMustard
-                        )
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Guardar extra",
-                        color =
-                            PalaciusBackgroundDark,
-                        fontWeight =
-                            FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
+                    if (toppingEditando != null) {
+                        Button(
+                            enabled =
+                                !guardandoTopping,
+                            onClick = {
+                                limpiarFormularioTopping()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors =
+                                ButtonDefaults
+                                    .buttonColors(
+                                        containerColor =
+                                            PalaciusDivider
+                                    )
+                        ) {
+                            Text(
+                                text = "Cancelar",
+                                color =
+                                    PalaciusTextLight,
+                                fontWeight =
+                                    FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Button(
+                        enabled =
+                            !guardandoTopping,
+                        onClick = {
+                            guardarOActualizarTopping()
+                        },
+                        modifier = Modifier
+                            .weight(2f)
+                            .height(56.dp),
+                        colors =
+                            ButtonDefaults
+                                .buttonColors(
+                                    containerColor =
+                                        PalaciusPrimaryMustard
+                                )
+                    ) {
+                        Text(
+                            text =
+                                when {
+                                    guardandoTopping &&
+                                            toppingEditando != null ->
+                                        "Actualizando..."
+
+                                    guardandoTopping ->
+                                        "Guardando..."
+
+                                    toppingEditando != null ->
+                                        "Actualizar extra"
+
+                                    else ->
+                                        "Guardar extra"
+                                },
+                            color =
+                                PalaciusBackgroundDark,
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
                 }
             }
 
             Spacer(
-                modifier = Modifier.height(24.dp)
+                modifier =
+                    Modifier.height(24.dp)
             )
 
             Text(
                 text = "Extras registrados",
-                color = PalaciusSecondaryGold,
+                color =
+                    PalaciusSecondaryGold,
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight =
+                    FontWeight.Bold
             )
 
             Spacer(
-                modifier = Modifier.height(12.dp)
+                modifier =
+                    Modifier.height(12.dp)
             )
 
             SelectorEstadoCatalogo(
-                filtroActual = filtroActual,
-                cantidadActivos = cantidadActivos,
+                filtroActual =
+                    filtroActual,
+                cantidadActivos =
+                    cantidadActivos,
                 cantidadInactivos =
                     cantidadInactivos,
                 onCambiarFiltro = {
@@ -596,7 +1017,8 @@ fun VistaGestionToppings(
             )
 
             Spacer(
-                modifier = Modifier.height(12.dp)
+                modifier =
+                    Modifier.height(12.dp)
             )
         }
 
@@ -612,14 +1034,16 @@ fun VistaGestionToppings(
                         } else {
                             "No hay extras inactivos."
                         },
-                    color = PalaciusTextMuted,
+                    color =
+                        PalaciusTextMuted,
                     modifier =
                         Modifier.padding(16.dp)
                 )
             }
         } else {
             items(
-                items = toppingsFiltrados,
+                items =
+                    toppingsFiltrados,
                 key = { topping ->
                     topping.id
                 }
@@ -628,7 +1052,9 @@ fun VistaGestionToppings(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp)
+                        .padding(
+                            bottom = 8.dp
+                        )
                         .clip(
                             RoundedCornerShape(8.dp)
                         )
@@ -646,10 +1072,12 @@ fun VistaGestionToppings(
                         Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f)
+                        modifier =
+                            Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "+ ${topping.nombre}",
+                            text =
+                                "+ ${topping.nombre}",
                             color =
                                 if (topping.activo) {
                                     PalaciusTextLight
@@ -667,6 +1095,17 @@ fun VistaGestionToppings(
                             color =
                                 PalaciusTextMuted,
                             fontSize = 12.sp
+                        )
+
+                        Text(
+                            text =
+                                "Disponible en: " +
+                                        topping
+                                            .obtenerCategoriasPermitidas()
+                                            .joinToString(", "),
+                            color =
+                                PalaciusSecondaryGold,
+                            fontSize = 11.sp
                         )
 
                         Text(
@@ -690,7 +1129,7 @@ fun VistaGestionToppings(
                         verticalAlignment =
                             Alignment.CenterVertically,
                         horizontalArrangement =
-                            Arrangement.spacedBy(12.dp)
+                            Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text =
@@ -701,6 +1140,26 @@ fun VistaGestionToppings(
                                 FontWeight.Bold
                         )
 
+                        Button(
+                            onClick = {
+                                cargarToppingParaEditar(
+                                    topping
+                                )
+                            },
+                            colors =
+                                ButtonDefaults
+                                    .buttonColors(
+                                        containerColor =
+                                            PalaciusSecondaryGold
+                                    )
+                        ) {
+                            Text(
+                                text = "Editar",
+                                color =
+                                    PalaciusBackgroundDark
+                            )
+                        }
+
                         if (topping.activo) {
                             Button(
                                 onClick = {
@@ -708,14 +1167,16 @@ fun VistaGestionToppings(
                                         topping
                                 },
                                 colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor =
-                                            Color(0xFF8B0000)
-                                    )
+                                    ButtonDefaults
+                                        .buttonColors(
+                                            containerColor =
+                                                Color(0xFF8B0000)
+                                        )
                             ) {
                                 Text(
                                     text = "Desactivar",
-                                    color = Color.White
+                                    color =
+                                        Color.White
                                 )
                             }
                         } else {
@@ -729,14 +1190,16 @@ fun VistaGestionToppings(
                                     }
                                 },
                                 colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor =
-                                            Color(0xFF2E7D32)
-                                    )
+                                    ButtonDefaults
+                                        .buttonColors(
+                                            containerColor =
+                                                Color(0xFF2E7D32)
+                                        )
                             ) {
                                 Text(
                                     text = "Reactivar",
-                                    color = Color.White,
+                                    color =
+                                        Color.White,
                                     fontWeight =
                                         FontWeight.Bold
                                 )
@@ -758,6 +1221,7 @@ fun VistaGestionToppings(
             },
             containerColor =
                 PalaciusSurfaceDark,
+
             title = {
                 Text(
                     text = "Desactivar extra",
@@ -767,6 +1231,7 @@ fun VistaGestionToppings(
                         FontWeight.Bold
                 )
             },
+
             text = {
                 Text(
                     text =
@@ -775,6 +1240,7 @@ fun VistaGestionToppings(
                         PalaciusTextLight
                 )
             },
+
             confirmButton = {
                 Button(
                     onClick = {
@@ -785,21 +1251,31 @@ fun VistaGestionToppings(
                                 )
                         }
 
+                        if (
+                            toppingEditando?.id ==
+                            topping.id
+                        ) {
+                            limpiarFormularioTopping()
+                        }
+
                         toppingPendienteDesactivar =
                             null
                     },
                     colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor =
-                                Color(0xFF8B0000)
-                        )
+                        ButtonDefaults
+                            .buttonColors(
+                                containerColor =
+                                    Color(0xFF8B0000)
+                            )
                 ) {
                     Text(
                         text = "Desactivar",
-                        color = Color.White
+                        color =
+                            Color.White
                     )
                 }
             },
+
             dismissButton = {
                 TextButton(
                     onClick = {
